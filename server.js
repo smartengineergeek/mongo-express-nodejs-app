@@ -1,34 +1,42 @@
 var express = require('express');
-var app = express();
-var port = process.env.PORT || 8080;
-var mongoose = require('mongoose');
-var passport = require('passport');
-var flash = require('connect-flash');
-
-var morgan = require('morgan');
-var cookieParser = require('cookie-parser');
+var log = require('morgan')('dev');
 var bodyParser = require('body-parser');
-var session = require('express-session');
 
-var configDB = require('./config/database.js');
+var properties = require('./config/properties');
+var db = require('./config/database');
+//hero routes
+var heroRoutes = require('./api/heros/heros.routes');
+var app = express();
 
-mongoose.connect(configDB.url);
+//configure bodyparser
+var bodyParserJSON = bodyParser.json();
+var bodyParserURLEncoded = bodyParser.urlencoded({extended: true});
 
-// require('./config/passport')(passport);
+//initialise express router
+var router = express.Router();
 
-//set up our express application
-app.use(morgan('dev'));
-app.use(cookieParser());
-app.use(bodyParser());
+//call database connectivity function
+db();
 
-app.set('view engine', 'ejs');
+//configure app.use()
+app.use(log);
+app.use(bodyParserJSON);
+app.use(bodyParserURLEncoded);
 
-//required for passport 
-app.use(session({ secret: '' }));
-app.use(passport.initialize());
-app.use(passport.session());
-app.use(flash());
+//Error handling
+app.use(function(req, res, next){
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+    res.setHeader("Access-Control-Allow-Headers", "Access-Control-Allow-Origin,Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers,Authorization");
+  next();
+})
 
-//routes
-app.listen(port);
-console.log('The magic happens on port '+port);
+//use express router
+app.use('/api',router);
+//call heros routing
+heroRoutes(router);
+
+app.listen(properties.PORT, (req, res) => {
+    console.log(`Server is running on ${properties.PORT} port.`);
+});
